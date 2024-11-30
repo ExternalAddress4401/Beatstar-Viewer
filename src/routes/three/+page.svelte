@@ -93,10 +93,6 @@
 
 			drawRectangleWithSections();
 
-			notes.push(new ThreeNote(0, 1, 0));
-			notes.push(new ThreeNote(0.5, 1, 0));
-			notes.push(new ThreeNote(1, 1, 0));
-
 			for (const note of data.notes) {
 				notes.push(new ThreeNote(note.offset, note.lane, note.length, note.swipe));
 			}
