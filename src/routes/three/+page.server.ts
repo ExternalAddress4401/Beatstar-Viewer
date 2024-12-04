@@ -23,5 +23,5 @@ export const load: PageServerLoad = async () => {
 			console.log(note);
 		}
 	}
-	return { notes };
+	return { notes, sections: chart.sections.map(({ offset }) => offset) };
 };

@@ -1,6 +1,9 @@
 import { GLOBALS } from '$lib/globals';
 import * as THREE from 'three';
 import { v4 as uuid } from 'uuid';
+import type { Viewer } from './Viewer.svelte';
+import { createRect } from '$lib/tools/RectHelper';
+import { ThreeGroup } from './ThreeGroup';
 
 export interface PartialNote {
 	offset: number;
@@ -10,8 +13,8 @@ export interface PartialNote {
 }
 
 export class ThreeNote {
-	note?: THREE.Mesh;
-	bar?: THREE.Group | THREE.Mesh;
+	viewer: Viewer;
+	note: ThreeGroup = new ThreeGroup();
 	id: string;
 	lane: number;
 	offset: number;
@@ -19,19 +22,21 @@ export class ThreeNote {
 	moonscraperOffset: number;
 	length: number;
 	visualLength: number = 30;
+	isSection: boolean = false;
 
-	constructor(offset: number, lane: number, length: number, swipe?: number) {
+	constructor(viewer: Viewer, offset: number, lane: number, length: number, swipe?: number) {
 		this.id = uuid();
+		this.viewer = viewer;
 		this.offset = offset;
 		this.moonscraperOffset = offset * 192;
 		this.lane = lane;
 		this.length = length * 192;
 		this.swipe = swipe;
 	}
-	init(prevNote: ThreeNote, nextNote: ThreeNote) {
+	init(prevNote: ThreeNote, nextNote: ThreeNote, sections: number[]) {
 		this.visualLength = this.calculateVisualLength(this.length, prevNote, nextNote);
-		this.note = this.createNote();
-		this.bar = this.swipe ? this.createArrow() : this.createBar();
+		this.createNote();
+		this.isSection = sections.includes(this.offset);
 
 		this.note.userData = { type: 'note', id: this.id };
 	}
@@ -62,86 +67,83 @@ export class ThreeNote {
 
 		if (length) {
 			const steps = this.length / 192;
-			adjustedHeight += padding * steps + adjustedHeight * steps;
-			adjustedHeight -= adjustedHeight / 2;
+			adjustedHeight += padding * steps + adjustedHeight * steps - adjustedHeight / 2;
 		}
 
 		return adjustedHeight;
 	}
+	update() {
+		if (this.note) {
+			this.viewer.scene.remove(this.note);
+			this.note.clear();
+		}
+		// Create new meshes
+		this.createNote();
+		if (this.swipe) {
+			this.createArrow();
+		} else {
+			this.createBar();
+		}
+	}
 	createNote() {
-		const padding = 10;
-		const laneWidth = GLOBALS.screenWidth / 3;
-		const width = laneWidth - padding;
-		const height = 30;
-		const radius = 3; // Corner radius
+		const padding = 3;
+		const width = this.viewer.planeSize / 3 - padding;
+		const height = GLOBALS.noteLength;
+		const radius = 3;
 
-		const shape = new THREE.Shape();
-		shape.moveTo(-width / 2 + radius, -height / 2);
-		shape.lineTo(width / 2 - radius, -height / 2);
-		shape.quadraticCurveTo(width / 2, -height / 2, width / 2, -height / 2 + radius);
+		if (this.isSection) {
+			const note = createRect(this.visualLength, width - 2, height - 2, radius);
+			const bottom = createRect(this.visualLength + 4, width + 2, height + 2, radius + 2, {
+				color: 'red'
+			});
+			note.userData = { type: 'note', id: this.id };
+			this.note.push(bottom);
+			this.note.push(note);
+		} else {
+			const note = createRect(this.visualLength, width, this.visualLength, radius);
+			note.userData = { type: 'note', id: this.id };
+			this.note.push(note);
+		}
 
-		shape.lineTo(width / 2, this.visualLength - height / 2 - radius);
-		shape.quadraticCurveTo(
-			width / 2,
-			this.visualLength - height / 2,
-			width / 2 - radius,
-			this.visualLength - height / 2
-		);
-
-		shape.lineTo(-width / 2 + radius, this.visualLength - height / 2);
-		shape.quadraticCurveTo(
-			-width / 2,
-			this.visualLength - height / 2,
-			-width / 2,
-			this.visualLength - height / 2 - radius
-		);
-
-		shape.lineTo(-width / 2, -height / 2 + radius);
-		shape.quadraticCurveTo(-width / 2, -height / 2, -width / 2 + radius, -height / 2);
-
-		const geometry = new THREE.ShapeGeometry(shape);
-		const material = new THREE.MeshBasicMaterial({ color: 'black' });
-		const note = new THREE.Mesh(geometry, material);
-
-		const xPosition = -GLOBALS.screenWidth / 2 + laneWidth * (this.lane + 0.5);
-		note.position.x = xPosition;
-		note.position.z = 0.1;
-
-		return note;
+		this.note.position.x = ((this.lane - 1) * this.viewer.planeSize) / 3;
 	}
 	createBar() {
-		const laneWidth = GLOBALS.screenWidth / GLOBALS.numberOfLanes;
-		const xPosition = -GLOBALS.screenWidth / 2 + laneWidth * (this.lane + 0.5);
-		const padding = 10;
-		const height = GLOBALS.noteHeight;
-		const width = laneWidth - padding;
-		const lineLength = this.visualLength - height / 2;
+		const padding = 3;
+		const width = this.viewer.planeSize / 3 - padding;
+		const lineLength = this.visualLength - GLOBALS.noteLength / 2 - padding;
 
-		const group = new THREE.Group();
-
-		const barMaterial = new THREE.MeshBasicMaterial({ color: 'red' });
-		const barGeometry = new THREE.PlaneGeometry(width - padding, 2);
-		const bar = new THREE.Mesh(barGeometry, barMaterial);
-		bar.position.z = 0.2;
-
-		group.add(bar);
-
+		if (this.isSection) {
+			const radius = this.viewer.planeSize / 10;
+			const segments = 32;
+			const geometry = new THREE.CircleGeometry(radius, segments);
+			const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+			const circle = new THREE.Mesh(geometry, material);
+			this.note.push(circle);
+		}
 		if (this.length) {
 			const verticalGeometry = new THREE.PlaneGeometry(width / 4 - padding, lineLength);
 			const verticalMaterial = new THREE.MeshBasicMaterial({ color: 'red' });
 			const verticalPlane = new THREE.Mesh(verticalGeometry, verticalMaterial);
-			verticalPlane.position.set(0, lineLength / 2, 0.2);
+			verticalPlane.position.set(0, 5, 0.2); //why is this 8???
+			if (this.moonscraperOffset === 480) {
+				console.log(this.visualLength, GLOBALS.noteLength, lineLength, padding);
+			}
+			verticalPlane.userData = { type: 'bar' };
 
-			group.add(verticalPlane);
+			this.note.push(verticalPlane);
 		}
+		if (!this.isSection) {
+			const barMaterial = new THREE.MeshBasicMaterial({ color: 'red' });
+			const barGeometry = new THREE.PlaneGeometry(width - padding, 2);
+			const bar = new THREE.Mesh(barGeometry, barMaterial);
+			if (this.length) {
+				bar.position.y = -this.visualLength / 2 + GLOBALS.noteLength / 2;
+			}
 
-		group.position.set(xPosition, this.visualLength * this.offset - this.visualLength, 0.2);
-
-		return group;
+			this.note.push(bar);
+		}
 	}
 	createArrow() {
-		const laneWidth = GLOBALS.screenWidth / GLOBALS.numberOfLanes;
-		const xPosition = -GLOBALS.screenWidth / 2 + laneWidth * (this.lane + 0.5);
 		const arrows = {
 			up: [
 				[30, 7],
@@ -209,24 +211,16 @@ export class ThreeNote {
 		const fillMaterial = new THREE.MeshBasicMaterial({ color: 'red', side: THREE.DoubleSide });
 		const shapeMesh = new THREE.Mesh(shapeGeometry, fillMaterial);
 
-		shapeMesh.position.x = xPosition;
-		shapeMesh.scale.set(1.5, 0.75, 1);
+		shapeMesh.scale.set(0.5, 0.5, 1);
 
 		shapeMesh.rotation.z = Math.PI / 1;
 
-		return shapeMesh;
+		this.note.push(shapeMesh);
 	}
-	draw(scene: THREE.Scene) {
-		const height = GLOBALS.noteHeight;
-		this.note.position.y = height * this.offset - height + GLOBALS.page * GLOBALS.scrollFactor;
-		this.bar.position.y =
-			height * this.offset -
-			height -
-			(this.length ? 0 : (height - this.visualLength - 10) / 2) +
-			GLOBALS.page * GLOBALS.scrollFactor;
-		this.note.position.z = 0.1;
-		this.bar.position.z = 0.2;
-		scene.add(this.note);
-		scene.add(this.bar);
+	draw(viewer: Viewer) {
+		this.note.position.y =
+			this.visualLength / 2 + this.offset * 40 + this.offset + viewer.page * GLOBALS.scrollFactor;
+
+		viewer.scene.add(this.note);
 	}
 }
