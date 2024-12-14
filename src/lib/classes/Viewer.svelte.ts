@@ -17,7 +17,7 @@ export class Viewer {
 	raycaster: THREE.Raycaster;
 	mouse: Mouse;
 	selectedNote = $state<ThreeNote>();
-	debug: boolean = false;
+	debug: boolean = true;
 
 	constructor(container: HTMLElement | null, notes: PartialNote[], sections: number[]) {
 		if (!container) {
@@ -61,7 +61,7 @@ export class Viewer {
 			built.push(new ThreeNote(this, 0.5, 2, 0));
 			built.push(new ThreeNote(this, 1, 1, 0));
 			built.push(new ThreeNote(this, 1.5, 2, 0));
-			built.push(new ThreeNote(this, 2.5, 0, 1));
+			built.push(new ThreeNote(this, 2.5, 0, 3));
 		}
 
 		for (let i = 0; i < built.length; i++) {

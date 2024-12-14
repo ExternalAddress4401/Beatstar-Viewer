@@ -1,0 +1,29 @@
+@use './breakpoints.scss' as bp;
+
+// Small devices
+@mixin sm {
+	@media (min-width: #{bp.$screen-sm}) {
+		@content;
+	}
+}
+
+// Medium devices
+@mixin md {
+	@media (min-width: #{bp.$screen-md}) {
+		@content;
+	}
+}
+
+// Large devices
+@mixin lg {
+	@media (min-width: #{bp.$screen-lg}) {
+		@content;
+	}
+}
+
+// Extra large devices
+@mixin xl {
+	@media (min-width: #{bp.$screen-xl}) {
+		@content;
+	}
+}

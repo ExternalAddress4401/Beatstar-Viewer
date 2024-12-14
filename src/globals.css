@@ -68,6 +68,44 @@ h6 {
 }
 
 body {
-	background-color: black;
+	background-color: var(--background);
 	color: white;
+}
+
+:root {
+	font-family: Inter, sans-serif;
+	font-feature-settings:
+		'liga' 1,
+		'calt' 1; /* fix for Chrome */
+
+	--primary: #151ce1;
+	--primary-content: #f7f7fe;
+	--primary-dark: #1116b2;
+	--primary-light: #3c42ed;
+
+	--secondary: #e11582;
+	--secondary-content: #fef7fb;
+	--secondary-dark: #b21167;
+	--secondary-light: #ed3c9b;
+
+	--background: #1b1b1b;
+	--foreground: #262626;
+	--border: #404040;
+
+	--copy: #fbfbfb;
+	--copy-light: #d9d9d9;
+	--copy-lighter: #a6a6a6;
+
+	--success: #15e115;
+	--warning: #e1e115;
+	--error: #e11515;
+	--success-content: #000000;
+	--warning-content: #000000;
+	--error-content: #fef7f7;
+}
+
+@supports (font-variation-settings: normal) {
+	:root {
+		font-family: InterVariable, sans-serif;
+	}
 }

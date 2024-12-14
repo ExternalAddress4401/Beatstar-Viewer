@@ -10,6 +10,7 @@ export interface PartialNote {
 	lane: number;
 	length: number;
 	swipe?: number;
+	size?: number;
 }
 
 export class ThreeNote {
@@ -46,11 +47,11 @@ export class ThreeNote {
 
 		if (nextNote && this.lane === nextNote.lane) {
 			const thisY =
-				adjustedHeight * this.offset - adjustedHeight + GLOBALS.page * GLOBALS.scrollFactor;
+				adjustedHeight * this.offset - adjustedHeight + this.viewer.page * GLOBALS.scrollFactor;
 			const nextY =
 				adjustedHeight * nextNote.offset -
 				nextNote.visualLength +
-				GLOBALS.page * GLOBALS.scrollFactor;
+				this.viewer.page * GLOBALS.scrollFactor;
 
 			if (Math.abs(Math.abs(thisY) - Math.abs(nextY)) < adjustedHeight) {
 				if (this.visualLength === nextNote.visualLength) {
@@ -79,6 +80,11 @@ export class ThreeNote {
 		}
 		// Create new meshes
 		this.createNote();
+		if (this.swipe && this.length) {
+			console.log('tnis');
+			this.createArrow();
+			this.createBar();
+		}
 		if (this.swipe) {
 			this.createArrow();
 		} else {
@@ -110,7 +116,9 @@ export class ThreeNote {
 	createBar() {
 		const padding = 3;
 		const width = this.viewer.planeSize / 3 - padding;
-		const lineLength = this.visualLength - GLOBALS.noteLength / 2 - padding;
+		const lineLength = this.visualLength - GLOBALS.noteLength / 2 - padding - (this.swipe ? 16 : 0);
+		const barOffset = -this.visualLength / 2 + GLOBALS.noteLength / 2;
+		const lineOffset = -this.visualLength / 2 + lineLength / 2 + GLOBALS.noteLength / 2;
 
 		if (this.isSection) {
 			const radius = this.viewer.planeSize / 10;
@@ -124,9 +132,15 @@ export class ThreeNote {
 			const verticalGeometry = new THREE.PlaneGeometry(width / 4 - padding, lineLength);
 			const verticalMaterial = new THREE.MeshBasicMaterial({ color: 'red' });
 			const verticalPlane = new THREE.Mesh(verticalGeometry, verticalMaterial);
-			verticalPlane.position.set(0, 5, 0.2); //why is this 8???
-			if (this.moonscraperOffset === 480) {
-				console.log(this.visualLength, GLOBALS.noteLength, lineLength, padding);
+			if (this.isSection) {
+				if (this.moonscraperOffset === 6528) {
+					console.log('here', lineLength, lineOffset, this.visualLength);
+					console.log(this.visualLength - lineLength);
+				}
+
+				verticalPlane.position.set(0, lineLength / 2 + 6.5, 0.2);
+			} else {
+				verticalPlane.position.set(0, lineOffset, 0.2);
 			}
 			verticalPlane.userData = { type: 'bar' };
 
@@ -137,13 +151,19 @@ export class ThreeNote {
 			const barGeometry = new THREE.PlaneGeometry(width - padding, 2);
 			const bar = new THREE.Mesh(barGeometry, barMaterial);
 			if (this.length) {
-				bar.position.y = -this.visualLength / 2 + GLOBALS.noteLength / 2;
+				bar.position.y = barOffset;
 			}
 
 			this.note.push(bar);
 		}
+
+		if (this.moonscraperOffset === 1920) {
+			console.log(this.visualLength, GLOBALS.noteLength, lineLength, barOffset, 3);
+		}
 	}
 	createArrow() {
+		const lineLength = this.visualLength - GLOBALS.noteLength / 2 - 3 - (this.swipe ? 31 : 0);
+
 		const arrows = {
 			up: [
 				[30, 7],
@@ -214,6 +234,10 @@ export class ThreeNote {
 		shapeMesh.scale.set(0.5, 0.5, 1);
 
 		shapeMesh.rotation.z = Math.PI / 1;
+
+		if (this.swipe && this.length) {
+			shapeMesh.position.y = lineLength - GLOBALS.noteLength;
+		}
 
 		this.note.push(shapeMesh);
 	}
